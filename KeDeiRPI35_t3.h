@@ -562,19 +562,11 @@ class KEDEIRPI35_t3 : public Print
     uint8_t _pending_rx_count;
     volatile uint32_t *_touchcsport;
 
-#elif defined(KINETISK)
+#elif defined(KINETISK) || defined(KINETISL)
     uint8_t _cspinmask;
     volatile uint8_t *_csport;
     uint8_t _touchcspinmask;
     volatile uint8_t *_touchcsport;
-
-#elif defined(KINETISL)
-    uint8_t _pending_rx_count;
-	uint8_t _touchcspinAsserted;
-    volatile uint8_t  *_touchcsport;
-    uint8_t _touchcspinmask;
-    uint8_t _cspinmask;
-    volatile uint8_t *_csport;
 
 #endif
 
@@ -764,120 +756,51 @@ class KEDEIRPI35_t3 : public Print
 		return;
 	}
 #elif defined(KINETISL)
-	void waitTransmitComplete(void)  {
-	    uint32_t tmp __attribute__((unused));
-
-		while (_pending_rx_count) {
-			uint16_t timeout_count = 0xff; // hopefully enough 
-			while (!(_pkinetisl_spi->S & SPI_S_SPRF) && timeout_count--) ; // wait 
-			uint8_t d __attribute__((unused));
-			d = _pkinetisl_spi->DL;
-			d = _pkinetisl_spi->DH;
-			_pending_rx_count--; // We hopefully received our data...
-		}
+	void DIRECT_WRITE_LOW(volatile uint8_t * base, uint8_t mask)  __attribute__((always_inline)) {
+		*base &= ~mask;
 	}
-	
-
-	void setCommandMode()  __attribute__((always_inline)) {
-		if (!_touchcspinAsserted) {
-			waitTransmitComplete();
-			*_touchcsport  &= ~_touchcspinmask;
-			_touchcspinAsserted = 1;
-		}
+	void DIRECT_WRITE_HIGH(volatile uint8_t * base, uint8_t mask)  __attribute__((always_inline)) {
+		*base |= mask;
 	}
 
-	void setDataMode()  __attribute__((always_inline)){
-		if (_touchcspinAsserted) {
-			waitTransmitComplete();
-			*_touchcsport  |= _touchcspinmask;
-			_touchcspinAsserted = 0;
-		}
-	}
-	void outputToSPIAlready8Bits(uint8_t c) __attribute__((always_inline)){
-		while (!(_pkinetisl_spi->S & SPI_S_SPTEF)) ; // wait if output buffer busy.
-		// Clear out buffer if there is something there...
-		if  ((_pkinetisl_spi->S & SPI_S_SPRF)) {
-			uint8_t d __attribute__((unused));
-			d = _pkinetisl_spi->DL;
-			_pending_rx_count--;
-		} 
-		_pkinetisl_spi->DL = c; // output byte
-		_pending_rx_count++; // let system know we sent something	
-	}
-
-	void outputToSPI(uint8_t c) __attribute__((always_inline)){
-		if (_pkinetisl_spi->C2 & SPI_C2_SPIMODE) {
-			// Wait to change modes until any pending output has been done.
-			waitTransmitComplete();
-			_pkinetisl_spi->C2 = 0; // make sure 8 bit mode.
-		}
-		outputToSPIAlready8Bits(c);
-	}
-
-	void outputToSPI16(uint16_t data)  {
-		if (!(_pkinetisl_spi->C2 & SPI_C2_SPIMODE)) {
-			// Wait to change modes until any pending output has been done.
-			waitTransmitComplete();
-			_pkinetisl_spi->C2 = SPI_C2_SPIMODE; // make sure 8 bit mode.
-		}
-		uint8_t s;
-		do {
-			s = _pkinetisl_spi->S;
-			 // wait if output buffer busy.
-			// Clear out buffer if there is something there...
-			if  ((s & SPI_S_SPRF)) {
-				uint8_t d __attribute__((unused));
-				d = _pkinetisl_spi->DL;
-				d = _pkinetisl_spi->DH;
-				_pending_rx_count--; 	// let system know we sent something	
-			}
-
-		} while (!(s & SPI_S_SPTEF) || (s & SPI_S_SPRF));
-
-		_pkinetisl_spi->DL = data; 		// output low byte
-		_pkinetisl_spi->DH = data >> 8; // output high byte
-		_pending_rx_count++; 	// let system know we sent something	
-	}
-
-	void beginSPITransaction(uint32_t clock = KEDEIRPI35_SPICLOCK) __attribute__((always_inline)) {
+	void beginSPITransaction(uint32_t clock = KEDEIRPI35_SPICLOCK)  __attribute__((always_inline)) {
 		spi_port->beginTransaction(SPISettings(clock, MSBFIRST, SPI_MODE0));
-		if (_csport)
-			*_csport  &= ~_cspinmask;
 	}
-	void endSPITransaction() __attribute__((always_inline)) {
-		if (_csport)
-			*_csport |= _cspinmask;
+	void endSPITransaction()  __attribute__((always_inline)) {
 		spi_port->endTransaction();
 	}
 
-	void writecommand_cont(uint8_t c) __attribute__((always_inline))  {
-		setCommandMode();
-		outputToSPI(c);
-	}
-	void writedata8_cont(uint8_t c) __attribute__((always_inline)) {
-		setDataMode();
-		outputToSPI(c);
+	void delayNanoseconds(uint8_t cnt) {
+		while (cnt--) {
+
+		}
 	}
 
-	void writedata16_cont(uint16_t c) __attribute__((always_inline))  {
-		setDataMode();
-		outputToSPI16(c);
+	void spi_transmit32(uint32_t data32)
+	{
+		DIRECT_WRITE_LOW(_csport, _cspinmask);
+
+		// For TLC - real simple and dumb
+		spi_port->transfer16(data32 >>16);
+		spi_port->transfer16(data32 & 0xffff);
+		DIRECT_WRITE_HIGH(_csport, _cspinmask);
+		DIRECT_WRITE_LOW(_touchcsport, _touchcspinmask);
+		delayNanoseconds(5);
+		DIRECT_WRITE_HIGH(_touchcsport, _touchcspinmask);
 	}
 
-	void writecommand_last(uint8_t c) __attribute__((always_inline))  {
-		setCommandMode();
-		outputToSPI(c);
-		waitTransmitComplete();
-	}
-	void writedata8_last(uint8_t c) __attribute__((always_inline))  {
-		setDataMode();
-		outputToSPI(c);
-		waitTransmitComplete();
-	}
-	void writedata16_last(uint16_t c) __attribute__((always_inline)) {
-		setDataMode();
-		outputToSPI16(c);
-		waitTransmitComplete();
+	void spi_transmit24(uint32_t data32)
+	{
+		DIRECT_WRITE_LOW(_csport, _cspinmask);
+
+		// For TLC - real simple and dumb
+		spi_port->transfer(data32 >>16);
+		spi_port->transfer16(data32 & 0xffff);
+		DIRECT_WRITE_HIGH(_csport, _cspinmask);
+		DIRECT_WRITE_LOW(_touchcsport, _touchcspinmask);
+		delayNanoseconds(5);
+		DIRECT_WRITE_HIGH(_touchcsport, _touchcspinmask);
+
 	}
 
 #endif

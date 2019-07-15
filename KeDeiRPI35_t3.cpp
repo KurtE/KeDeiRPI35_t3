@@ -1132,37 +1132,9 @@ void KEDEIRPI35_t3::writeRectNBPP(int16_t x, int16_t y, int16_t w, int16_t h,  u
 
 void KEDEIRPI35_t3::begin(void)
 {
-    // verify SPI pins are valid;
-    //Serial.printf("::begin %x %x %x %d %d %d\n", (uint32_t)spi_port, (uint32_t)_pkinetisk_spi, (uint32_t)_spi_hardware, _mosi, _miso, _sclk);
+	//------------------------------------------------------------------------
+	// Teensy 3.x
     #ifdef KINETISK
-	/*
-    #if defined(__MK64FX512__) || defined(__MK66FX1M0__)
-    // Allow to work with mimimum of MOSI and SCK
-    if ((_mosi == 255 || _mosi == 11 || _mosi == 7 || _mosi == 28)  && (_sclk == 255 || _sclk == 13 || _sclk == 14 || _sclk == 27)) 
-	#else
-    if ((_mosi == 255 || _mosi == 11 || _mosi == 7) && (_sclk == 255 || _sclk == 13 || _sclk == 14)) 
-    #endif	
-    {
-        
-		if (_mosi != 255) spi_port->setMOSI(_mosi);
-        if (_sclk != 255) spi_port->setSCK(_sclk);
-
-        // Now see if valid MISO
-	    #if defined(__MK64FX512__) || defined(__MK66FX1M0__)
-	    if (_miso == 12 || _miso == 8 || _miso == 39)
-		#else
-	    if (_miso == 12 || _miso == 8)
-	    #endif
-		{	
-        	spi_port->setMISO(_miso);
-    	} else {
-			_miso = 0xff;	// set miso to 255 as flag it is bad
-		}
-	} else {
-        return; // not valid pins...
-	}
-	*/
-
 	if ((_mosi != 255) || (_miso != 255) || (_sclk != 255)) {
 		#if defined(__MK64FX512__) || defined(__MK66FX1M0__)
 			if(spi_port == &SPI){
@@ -1250,6 +1222,8 @@ void KEDEIRPI35_t3::begin(void)
 	_touchcspinmask = digitalPinToBitMask(_touchcs);
 	pinMode(_touchcs, OUTPUT);	
 	DIRECT_WRITE_HIGH(_touchcsport, _touchcspinmask);
+	//------------------------------------------------------------------------
+	// Teensy 4.x
 #elif defined(__IMXRT1052__) || defined(__IMXRT1062__)  // Teensy 4.x 
 		if(spi_port == &SPI){
 			if (SPI.pinIsMOSI(_mosi) && SPI.pinIsMISO(_miso) && SPI.pinIsSCK(_sclk)) {
@@ -1323,6 +1297,8 @@ void KEDEIRPI35_t3::begin(void)
 	_touchcspinmask = digitalPinToBitMask(_touchcs);
 	pinMode(_touchcs, OUTPUT);	
 	DIRECT_WRITE_HIGH(_touchcsport, _touchcspinmask);
+	//------------------------------------------------------------------------
+	// Teensy LC
 #elif defined(KINETISL)
 	if ((_mosi != 255) || (_miso != 255) || (_sclk != 255)) {
 		// Lets verify that all of the specifid pins are valid... right now only care about MSOI and sclk... 
@@ -1361,7 +1337,6 @@ void KEDEIRPI35_t3::begin(void)
 	_touchcsport    = portOutputRegister(digitalPinToPort(_touchcs));
 	_touchcspinmask = digitalPinToBitMask(_touchcs);
 	*_touchcsport |= _touchcspinmask;
-	_touchcspinAsserted = 0;
 
 	spi_port->begin();
 #endif

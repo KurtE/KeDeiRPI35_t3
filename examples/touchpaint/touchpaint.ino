@@ -13,6 +13,10 @@
   MIT license, all text above must be included in any redistribution
  ****************************************************/
 
+// Updated by KurtE
+// This version completely hacked for use with the KeDei RPI display
+// that uses XPT2046 and the like. 
+
 
 #include <SPI.h>
 #include <Wire.h>      // this is needed even tho we aren't using it
@@ -20,10 +24,11 @@
 #include <XPT2046_Touchscreen.h>
 
 // This is calibration data for the raw touch data to the screen coordinates
-#define TS_MINX 150
-#define TS_MINY 130
-#define TS_MAXX 3800
-#define TS_MAXY 4000
+#define TS_MINX 175
+#define TS_MAXX 3900
+
+#define TS_MINY 250
+#define TS_MAXY 3800
 
 // The STMPE610 uses hardware SPI on the shield, and #8
 #define STMPE_CS 9
@@ -33,10 +38,25 @@ XPT2046_Touchscreen ts = XPT2046_Touchscreen(STMPE_CS);
 #define TFT_CS 10
 KEDEIRPI35_t3 tft = KEDEIRPI35_t3(&SPI, TFT_CS, STMPE_CS);
 
+uint8_t debug_touch = 0; 
+
 // Size of the color selection boxes and the paintbrush size
 #define BOXSIZE 40
 #define PENRADIUS 3
-int oldcolor, currentcolor;
+
+// Define which colors we wish to use
+uint16_t colors[] = {
+    KEDEIRPI35_RED, KEDEIRPI35_YELLOW, KEDEIRPI35_GREEN, KEDEIRPI35_CYAN, 
+    KEDEIRPI35_BLUE, KEDEIRPI35_MAGENTA, KEDEIRPI35_PINK, KEDEIRPI35_ORANGE, 
+    KEDEIRPI35_WHITE, KEDEIRPI35_LIGHTGREY, KEDEIRPI35_DARKGREY, KEDEIRPI35_BLACK};
+char * color_names[] = {
+    "RED", "YELLOW", "GREEN", "CYAN", 
+    "BLUE", "MAGENTA", "PINK","ORANGE", 
+    "WHITE", "LIGHTGREY", "DARKGREY", "BLACK"}; 
+#define CNT_COLORS (sizeof(colors) / sizeof(colors[0]))
+
+uint8_t  currentcolor_index;
+uint16_t currentcolor;
 
 void setup(void) {
  
@@ -58,92 +78,78 @@ void setup(void) {
   tft.begin();
 
   Serial.println("Touchscreen started");
+  Serial.println("Entering anything in Serial Monitor will toggle touch screen debug output");
   
   tft.fillScreen(KEDEIRPI35_BLACK);
   
   // make the color selection boxes
-  tft.fillRect(0, 0, BOXSIZE, BOXSIZE, KEDEIRPI35_RED);
-  tft.fillRect(BOXSIZE, 0, BOXSIZE, BOXSIZE, KEDEIRPI35_YELLOW);
-  tft.fillRect(BOXSIZE*2, 0, BOXSIZE, BOXSIZE, KEDEIRPI35_GREEN);
-  tft.fillRect(BOXSIZE*3, 0, BOXSIZE, BOXSIZE, KEDEIRPI35_CYAN);
-  tft.fillRect(BOXSIZE*4, 0, BOXSIZE, BOXSIZE, KEDEIRPI35_BLUE);
-  tft.fillRect(BOXSIZE*5, 0, BOXSIZE, BOXSIZE, KEDEIRPI35_MAGENTA);
- 
+  uint16_t x = 0;
+  for (uint8_t i = 0; i < CNT_COLORS; i++) {
+    tft.fillRect(x, 0, BOXSIZE, BOXSIZE, colors[i]);
+    x += BOXSIZE;
+  }
+
   // select the current color 'red'
   tft.drawRect(0, 0, BOXSIZE, BOXSIZE, KEDEIRPI35_WHITE);
-  currentcolor = KEDEIRPI35_RED;
+  currentcolor = colors[0];
+  currentcolor_index = 0;
 }
 
 
 void loop()
 {
+  // See if the user entered anything
+  if (Serial.available()) {
+    while (Serial.read() != -1) ; // remove all data.
+    if (debug_touch) {
+      debug_touch = 0;
+      Serial.println("*** Debug turned off ***");
+    } else {
+      debug_touch = 1;
+      Serial.println("### Debug turned on ###");      
+    }
+
+  }
   // See if there's any  touch data for us
   if (ts.bufferEmpty()) {
     return;
   }
-  /*
-  // You can also wait for a touch
-  if (! ts.touched()) {
-    return;
-  }
-  */
 
   // Retrieve a point  
   TS_Point p = ts.getPoint();
   
- /*
-  Serial.print("X = "); Serial.print(p.x);
-  Serial.print("\tY = "); Serial.print(p.y);
-  Serial.print("\tPressure = "); Serial.println(p.z);  
- */
+  if (debug_touch) {
+    Serial.print("X = "); Serial.print(p.x);
+    Serial.print("\tY = "); Serial.print(p.y);
+    Serial.print("\tPressure = "); Serial.print(p.z);  
+
+  }
  
   // Scale from ~0->4000 to tft.width using the calibration #'s
-  p.x = map(p.x, TS_MINX, TS_MAXX, 0, tft.width());
+  p.x = map(p.x, TS_MAXX, TS_MINX, 0, tft.width());  // X's reversed
   p.y = map(p.y, TS_MINY, TS_MAXY, 0, tft.height());
 
-  /*
-  Serial.print("("); Serial.print(p.x);
-  Serial.print(", "); Serial.print(p.y);
-  Serial.println(")");
-  */
-
+  if (debug_touch) {
+    Serial.print(" ("); Serial.print(p.x);
+    Serial.print(", "); Serial.print(p.y);
+    Serial.println(")");
+  } 
+  
   if (p.y < BOXSIZE) {
-     oldcolor = currentcolor;
+    uint8_t newcolor_index = p.x / BOXSIZE;
+    if ((newcolor_index != currentcolor_index) && (newcolor_index < CNT_COLORS)) {
+      Serial.print("New color: ");
+      Serial.println(color_names[newcolor_index]);
 
-     if (p.x < BOXSIZE) { 
-       currentcolor = KEDEIRPI35_RED; 
-       tft.drawRect(0, 0, BOXSIZE, BOXSIZE, KEDEIRPI35_WHITE);
-     } else if (p.x < BOXSIZE*2) {
-       currentcolor = KEDEIRPI35_YELLOW;
-       tft.drawRect(BOXSIZE, 0, BOXSIZE, BOXSIZE, KEDEIRPI35_WHITE);
-     } else if (p.x < BOXSIZE*3) {
-       currentcolor = KEDEIRPI35_GREEN;
-       tft.drawRect(BOXSIZE*2, 0, BOXSIZE, BOXSIZE, KEDEIRPI35_WHITE);
-     } else if (p.x < BOXSIZE*4) {
-       currentcolor = KEDEIRPI35_CYAN;
-       tft.drawRect(BOXSIZE*3, 0, BOXSIZE, BOXSIZE, KEDEIRPI35_WHITE);
-     } else if (p.x < BOXSIZE*5) {
-       currentcolor = KEDEIRPI35_BLUE;
-       tft.drawRect(BOXSIZE*4, 0, BOXSIZE, BOXSIZE, KEDEIRPI35_WHITE);
-     } else if (p.x < BOXSIZE*6) {
-       currentcolor = KEDEIRPI35_MAGENTA;
-       tft.drawRect(BOXSIZE*5, 0, BOXSIZE, BOXSIZE, KEDEIRPI35_WHITE);
-     }
+      // redraw the old color box full
+      tft.fillRect(currentcolor_index*BOXSIZE, 0, BOXSIZE, BOXSIZE, colors[currentcolor_index]);
 
-     if (oldcolor != currentcolor) {
-        if (oldcolor == KEDEIRPI35_RED) 
-          tft.fillRect(0, 0, BOXSIZE, BOXSIZE, KEDEIRPI35_RED);
-        if (oldcolor == KEDEIRPI35_YELLOW) 
-          tft.fillRect(BOXSIZE, 0, BOXSIZE, BOXSIZE, KEDEIRPI35_YELLOW);
-        if (oldcolor == KEDEIRPI35_GREEN) 
-          tft.fillRect(BOXSIZE*2, 0, BOXSIZE, BOXSIZE, KEDEIRPI35_GREEN);
-        if (oldcolor == KEDEIRPI35_CYAN) 
-          tft.fillRect(BOXSIZE*3, 0, BOXSIZE, BOXSIZE, KEDEIRPI35_CYAN);
-        if (oldcolor == KEDEIRPI35_BLUE) 
-          tft.fillRect(BOXSIZE*4, 0, BOXSIZE, BOXSIZE, KEDEIRPI35_BLUE);
-        if (oldcolor == KEDEIRPI35_MAGENTA) 
-          tft.fillRect(BOXSIZE*5, 0, BOXSIZE, BOXSIZE, KEDEIRPI35_MAGENTA);
-     }
+      // Put outline around new color handle white.
+      currentcolor_index = newcolor_index;
+      currentcolor = colors[currentcolor_index];
+      tft.drawRect(currentcolor_index*BOXSIZE, 0, BOXSIZE, BOXSIZE, (currentcolor != KEDEIRPI35_WHITE)? KEDEIRPI35_WHITE : KEDEIRPI35_RED );
+
+    }
   }
   if (((p.y-PENRADIUS) > BOXSIZE) && ((p.y+PENRADIUS) < tft.height())) {
     tft.fillCircle(p.x, p.y, PENRADIUS, currentcolor);

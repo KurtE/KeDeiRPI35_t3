@@ -3,7 +3,21 @@ Overview and Warning:
 This is a modified version of the official PJRC ILI9341_t3 library (https://github.com/PaulStoffregen/ILI9341_t3) to work with ILI9488 displays. And it is always a Work In Progress.  Also using a lot of work from the the Raspberry Pi implementation: https://github.com/cnkz111/RaspberryPi_KeDei_35_lcd_v62
 
 
-Warning: This is a WIP, that still has several real issues to be resolved.  Like rotation may not be correct, likewise colors and the like. 
+Warning: This is just an experiment.  It is discussed up on the Teensy forum thread: https://forum.pjrc.com/threads/55735-ILI9488_t3-Support-for-the-ILI9488-on-T3-x-and-beyond
+
+
+Several of us purchased one of these thinking we were buying an ILI9488 display to try out.  Turns out very different.  We were finally able to 
+figure out a few things about the display and had a simple program running, using information we found above and elsewhere.
+
+So decided to see how hard it would be to get it to work as a display for a Teensy.  We got it to a point that it appears to be working.
+
+However not sure how much additional time and energy will be spent on it, as none of us have any plans to actually use these displays.
+
+There are several others we would much rather use. 
+
+We make now warrantee or promises that this library is fit for any purpose other than to experiment with.
+
+USE AT YOUR OWN RISK!
 
 This library borrows some concepts and functionality from another ILI9341 library, https://github.com/KurtE/ILI9341_t3n.  It also incorporates functionality from the TFT_ILI9341_ESP, https://github.com/Bodmer/TFT_ILI9341_ESP, for additional functions:
 ```c++
@@ -85,5 +99,5 @@ Future Updates
 ==============
 
 
-Again WIP
+Again an WIP experiment, which may never go anywhere!
 =====

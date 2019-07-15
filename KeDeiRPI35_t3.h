@@ -51,14 +51,11 @@
 
 #ifdef __cplusplus
 #include "Arduino.h"
-#include <DMAChannel.h>
 #endif
 
 #if defined(__AVR__)
 #error "Sorry, KEDEIRPI35_t3 does not work with Teensy 2.0 or Teensy++ 2.0.  Use Adafruit_ILI9488."
 #endif
-
-#define  KEDEIRPI35_USE_DMAMEM
 
 // Allow us to enable or disable capabilities, particully Frame Buffer and Clipping for speed and size
 #ifndef DISABLE_KEDEIRPI35_FRAMEBUFFER
@@ -210,9 +207,6 @@ typedef struct {
 	unsigned char cap_height;
 } KEDEIRPI35_t3_font_t;
 
-#define KEDEIRPI35_DMA_INIT	0x01 	// We have init the Dma settings
-#define KEDEIRPI35_DMA_CONT	0x02 	// continuous mode
-#define KEDEIRPI35_DMA_ACTIVE  0x80    // Is currently active
 
 //These enumerate the text plotting alignment (reference datum point)
 #define TL_DATUM 0 // Top left (default)
@@ -475,19 +469,24 @@ class KEDEIRPI35_t3 : public Print
 	// probably not called directly... 
 	uint8_t doActualConvertColorToIndex(uint16_t color);  
 
-		
-	bool	updateScreenAsync(bool update_cont = false);	// call to say update the screen optinoally turn into continuous mode. 
-	void	waitUpdateAsyncComplete(void);
-	void	endUpdateAsync();			 // Turn of the continueous mode fla
-	void	dumpDMASettings();
-	#ifdef ENABLE_KEDEIRPI35_FRAMEBUFFER
-	uint32_t frameCount() {return _dma_frame_count; }
-	boolean	asyncUpdateActive(void)  {return (_dma_state & KEDEIRPI35_DMA_ACTIVE);}
-	void	initDMASettings(void);
-	#else
+	//=============================================================================
+	// DMA - Async support
+	//=============================================================================
+	// We are not going to bother with doing ASYNC this display driver
+	// As we have to muck with CS and Touch CS for every 3/4 byte transfer
+	// We re leav
+	// no DMA support yet
+	bool updateScreenAsync(bool update_cont) {
+		updateScreen();
+		return true;
+	}	// call to say update the screen optinoally turn into continuous mode. 
+
+	void waitUpdateAsyncComplete(void) {};
+	void endUpdateAsync() {};			 // Turn of the continueous mode fla
+	void dumpDMASettings() {};
+
 	uint32_t frameCount() {return 0; }
 	boolean	asyncUpdateActive(void)  {return false;}
-	#endif
 
 	//3D Rendering Engine
 	// State variables for controlling masked and overdrawn rendering
@@ -571,7 +570,6 @@ class KEDEIRPI35_t3 : public Print
 #endif
 
 #ifdef ENABLE_KEDEIRPI35_FRAMEBUFFER
-	enum {DMA_PIXELS_OUTPUT_PER_DMA=80};  // How many pixels at a time?
     // Add support for optional frame buffer
     uint8_t		*_pfbtft;						// Optional Frame buffer 
     uint8_t		_use_fbtft;						// Are we in frame buffer mode?
@@ -582,45 +580,6 @@ class KEDEIRPI35_t3 : public Print
     uint16_t	_pallet_count;					// how many items are in it...
     boolean		_colors_are_index;				// are the values passed in index or color?
 
-    // Add DMA support. 
-	static  KEDEIRPI35_t3 		*_dmaActiveDisplay;  // Use pointer to this as a way to get back to object...
-	static volatile uint8_t  	_dma_state;  		// DMA status
-	static volatile uint32_t	_dma_frame_count;	// Can return a frame count...
-
-	// T3.6
-	#if defined(__MK66FX1M0__) 
-	static DMASetting 	_dmasettings[3];
-	static DMAChannel  	_dmatx;
-
-	bool fillDMApixelBuffer(uint8_t *buffer_ptr);
-
-	uint8_t _dma_pixel_buffer0[DMA_PIXELS_OUTPUT_PER_DMA*3] __attribute__ ((aligned(4)));
-	uint8_t _dma_pixel_buffer1[DMA_PIXELS_OUTPUT_PER_DMA*3] __attribute__ ((aligned(4)));
-
-	#elif defined(__MK64FX512__)
-	// T3.5 - had issues scatter/gather so do just use channels/interrupts
-	// and update and continue
-	static DMAChannel  	_dmatx;
-	bool fillDMApixelBuffer(uint8_t *buffer_ptr);
-
-	uint8_t _dma_pixel_buffer0[DMA_PIXELS_OUTPUT_PER_DMA*3] __attribute__ ((aligned(4)));
-	uint8_t _dma_pixel_buffer1[DMA_PIXELS_OUTPUT_PER_DMA*3] __attribute__ ((aligned(4)));
-
-	#elif defined(__IMXRT1052__) || defined(__IMXRT1062__)  // Teensy 4.x
-	// Going to try it similar to T4.
-	static DMASetting 	_dmasettings[2];
-	static DMAChannel  	_dmatx;
-	uint32_t 			_spi_fcr_save;		// save away previous FCR register value
-	bool fillDMApixelBuffer(uint32_t *buffer_ptr);
-
-	uint32_t _dma_pixel_buffer0[DMA_PIXELS_OUTPUT_PER_DMA] __attribute__ ((aligned(4)));
-	uint32_t _dma_pixel_buffer1[DMA_PIXELS_OUTPUT_PER_DMA] __attribute__ ((aligned(4)));
-
-	#endif	
-	static void dmaInterrupt(void);
-	void process_dma_interrupt(void);
-	static volatile uint32_t _dma_pixel_index;
-	static volatile uint16_t	_dma_sub_frame_count;	// Can return a frame count...
 #endif
 
 

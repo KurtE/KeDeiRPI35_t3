@@ -706,8 +706,6 @@ void KEDEIRPI35_t3::fillScreenHGradient(uint16_t color1, uint16_t color2)
 	fillRectHGradient(0,0,_width,_height,color1,color2);
 }
 
-
-
 void KEDEIRPI35_t3::setRotation(uint8_t m)
 {
 	rotation = m % 4; // can't be higher than 3
@@ -715,24 +713,24 @@ void KEDEIRPI35_t3::setRotation(uint8_t m)
 	lcd_cmd(KEDEIRPI35_MADCTL);
 	switch (rotation) {
 	case 0:
-		lcd_data(0x48); 
-		_width  = KEDEIRPI35_TFTWIDTH;
-		_height = KEDEIRPI35_TFTHEIGHT;
+		lcd_data(0xEA); 
+		_width  = KEDEIRPI35_TFTHEIGHT;
+		_height = KEDEIRPI35_TFTWIDTH;
 		break;
 	case 1:
-		lcd_data(0xe8);
-		_width  = KEDEIRPI35_TFTHEIGHT;
-		_height = KEDEIRPI35_TFTWIDTH;
-		break;
-	case 2:
-		lcd_data(0x88);
+		lcd_data(0x4A);
 		_width  = KEDEIRPI35_TFTWIDTH;
 		_height = KEDEIRPI35_TFTHEIGHT;
 		break;
-	case 3:
-		lcd_data(0x28);
+	case 2:
+		lcd_data(0x2A);
 		_width  = KEDEIRPI35_TFTHEIGHT;
 		_height = KEDEIRPI35_TFTWIDTH;
+		break;
+	case 3:
+		lcd_data(0x8A);
+		_width  = KEDEIRPI35_TFTWIDTH;
+		_height = KEDEIRPI35_TFTHEIGHT;
 		break;
 	}
 	endSPITransaction();

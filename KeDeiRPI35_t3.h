@@ -130,9 +130,44 @@
 #define BEGIN_READ_DATA            0x2E
 #define READ_MEMORY_CONTINUE       0x3E
 
-// Define the MADCTL values for each rotation
-
 // Color definitions
+// Warning Some of these display appear to use RGB colors
+//                     Others use BGR colors
+//                     And some appear to use negated BGR
+// Define at most only one of these...
+//#define RGB_COLORS
+//#define BGR_COLORS
+#define NBGR_COLORS
+#if 1
+
+#ifdef RGB_COLORS
+#define CL(_r,_g,_b) ((((_r)&0xF8)<<8)|(((_g)&0xFC)<<3)|((_b)>>3))
+#elif defined(BGR_COLORS)
+#define CL(_r,_g,_b) ((((_b)&0xF8)<<8)|(((_g)&0xFC)<<3)|((_r)>>3))
+#else  // negated BGR colors
+#define CL(_r,_g,_b) (((((_b)&0xF8)<<8)|(((_g)&0xFC)<<3)|((_r)>>3))^0xffff)
+#endif
+#define KEDEIRPI35_BLACK       CL(   0,   0,   0 )
+#define KEDEIRPI35_NAVY        CL(   0,   0, 128 )
+#define KEDEIRPI35_DARKGREEN   CL(   0, 128,   0 )
+#define KEDEIRPI35_DARKCYAN    CL(   0, 128, 128 )
+#define KEDEIRPI35_MAROON      CL( 128,   0,   0 )
+#define KEDEIRPI35_PURPLE      CL( 128,   0, 128 )
+#define KEDEIRPI35_OLIVE       CL( 128, 128,   0 )
+#define KEDEIRPI35_LIGHTGREY   CL( 192, 192, 192 )
+#define KEDEIRPI35_DARKGREY    CL( 128, 128, 128 )
+#define KEDEIRPI35_BLUE        CL(   0,   0, 255 )
+#define KEDEIRPI35_GREEN       CL(   0, 255,   0 )
+#define KEDEIRPI35_CYAN        CL(   0, 255, 255 )
+#define KEDEIRPI35_RED         CL( 255,   0,   0 )
+#define KEDEIRPI35_MAGENTA     CL( 255,   0, 255 )
+#define KEDEIRPI35_YELLOW      CL( 255, 255,   0 )
+#define KEDEIRPI35_WHITE       CL( 255, 255, 255 )
+#define KEDEIRPI35_ORANGE      CL( 255, 165,   0 )
+#define KEDEIRPI35_GREENYELLOW CL( 173, 255,  47 )
+#define KEDEIRPI35_PINK        CL( 255, 0,  255 )
+
+#else
 #ifdef RGB_COLORS
 #define KEDEIRPI35_BLACK       0x0000      /*   0,   0,   0 */
 #define KEDEIRPI35_NAVY        0x000F      /*   0,   0, 128 */
@@ -178,6 +213,7 @@
 #define CL(_r,_g,_b) ((((_b)&0xF8)<<8)|(((_g)&0xFC)<<3)|((_r)>>3))
 #endif
 
+#endif
 
 #define sint16_t int16_t
 
@@ -292,7 +328,7 @@ class KEDEIRPI35_t3 : public Print
 	{
 		return (((r & 0x3E00) << 2) | ((g & 0x3F00) >>3) | ((b & 0x3E00) >> 9));
 	}
-#else
+#elif defined(BGR_COLORS)
 	static uint16_t color565(uint8_t r, uint8_t g, uint8_t b) {
 		return ((b & 0xF8) << 8) | ((g & 0xFC) << 3) | (r >> 3);
 	}
@@ -317,6 +353,35 @@ class KEDEIRPI35_t3 : public Print
 	static uint16_t RGB14tocolor565(int16_t r, int16_t g, int16_t b)
 	{
 		return (((b & 0x3E00) << 2) | ((g & 0x3F00) >>3) | ((r & 0x3E00) >> 9));
+	}
+#else
+	// Negated BGR format
+	static uint16_t color565(uint8_t r, uint8_t g, uint8_t b) {
+		return (((b & 0xF8) << 8) | ((g & 0xFC) << 3) | (r >> 3)) ^ 0xffff;
+	}
+
+	//color565toRGB		- converts 565 format 16 bit color to RGB
+	static void color565toRGB(uint16_t color, uint8_t &r, uint8_t &g, uint8_t &b) {
+		color ^= 0xffff; // invert back
+		b = (color>>8)&0x00F8;
+		g = (color>>3)&0x00FC;
+		r = (color<<3)&0x00F8;
+	}
+	
+	//color565toRGB14		- converts 16 bit 565 format color to 14 bit RGB (2 bits clear for math and sign)
+	//returns 00rrrrr000000000,00gggggg00000000,00bbbbb000000000
+	//thus not overloading sign, and allowing up to double for additions for fixed point delta
+	static void color565toRGB14(uint16_t color, int16_t &r, int16_t &g, int16_t &b) {
+		color ^= 0xffff; // invert back
+		b = (color>>2)&0x3E00;
+		g = (color<<3)&0x3F00;
+		r = (color<<9)&0x3E00;
+	}
+	
+	//RGB14tocolor565		- converts 14 bit RGB back to 16 bit 565 format color
+	static uint16_t RGB14tocolor565(int16_t r, int16_t g, int16_t b)
+	{
+		return (((b & 0x3E00) << 2) | ((g & 0x3F00) >>3) | ((r & 0x3E00) >> 9))^0xffff;
 	}
 #endif	
 	//uint8_t readdata(void);

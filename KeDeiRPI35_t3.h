@@ -137,7 +137,7 @@
 // Define at most only one of these...
 //#define RGB_COLORS
 //#define BGR_COLORS
-#define NBGR_COLORS
+#define NRGB_COLORS
 #if 1
 
 #ifdef RGB_COLORS
@@ -145,7 +145,7 @@
 #elif defined(BGR_COLORS)
 #define CL(_r,_g,_b) ((((_b)&0xF8)<<8)|(((_g)&0xFC)<<3)|((_r)>>3))
 #else  // negated BGR colors
-#define CL(_r,_g,_b) (((((_b)&0xF8)<<8)|(((_g)&0xFC)<<3)|((_r)>>3))^0xffff)
+#define CL(_r,_g,_b) (((((_r)&0xF8)<<8)|(((_g)&0xFC)<<3)|((_b)>>3))^0xffff)
 #endif
 #define KEDEIRPI35_BLACK       CL(   0,   0,   0 )
 #define KEDEIRPI35_NAVY        CL(   0,   0, 128 )
@@ -355,17 +355,17 @@ class KEDEIRPI35_t3 : public Print
 		return (((b & 0x3E00) << 2) | ((g & 0x3F00) >>3) | ((r & 0x3E00) >> 9));
 	}
 #else
-	// Negated BGR format
+	// Negated RGB format
 	static uint16_t color565(uint8_t r, uint8_t g, uint8_t b) {
-		return (((b & 0xF8) << 8) | ((g & 0xFC) << 3) | (r >> 3)) ^ 0xffff;
+		return (((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3)) ^ 0xffff;
 	}
 
 	//color565toRGB		- converts 565 format 16 bit color to RGB
 	static void color565toRGB(uint16_t color, uint8_t &r, uint8_t &g, uint8_t &b) {
 		color ^= 0xffff; // invert back
-		b = (color>>8)&0x00F8;
+		r = (color>>8)&0x00F8;
 		g = (color>>3)&0x00FC;
-		r = (color<<3)&0x00F8;
+		b = (color<<3)&0x00F8;
 	}
 	
 	//color565toRGB14		- converts 16 bit 565 format color to 14 bit RGB (2 bits clear for math and sign)
@@ -373,15 +373,15 @@ class KEDEIRPI35_t3 : public Print
 	//thus not overloading sign, and allowing up to double for additions for fixed point delta
 	static void color565toRGB14(uint16_t color, int16_t &r, int16_t &g, int16_t &b) {
 		color ^= 0xffff; // invert back
-		b = (color>>2)&0x3E00;
+		r = (color>>2)&0x3E00;
 		g = (color<<3)&0x3F00;
-		r = (color<<9)&0x3E00;
+		b = (color<<9)&0x3E00;
 	}
 	
 	//RGB14tocolor565		- converts 14 bit RGB back to 16 bit 565 format color
 	static uint16_t RGB14tocolor565(int16_t r, int16_t g, int16_t b)
 	{
-		return (((b & 0x3E00) << 2) | ((g & 0x3F00) >>3) | ((r & 0x3E00) >> 9))^0xffff;
+		return (((r & 0x3E00) << 2) | ((g & 0x3F00) >>3) | ((b & 0x3E00) >> 9))^0xffff;
 	}
 #endif	
 	//uint8_t readdata(void);

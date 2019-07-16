@@ -75,6 +75,7 @@
 #else
 #endif	
 
+const uint8_t KEDEIRPI35_t3::MADCTLRotionValues[4] = {0xEA, 0x4A, 0x2A, 0x8A};
 
 // Constructor when using hardware SPI.  Faster, but must use SPI pins
 // specific to each board type (e.g. 11,13 for Uno, 51,52 for Mega, etc.)
@@ -692,24 +693,25 @@ void KEDEIRPI35_t3::setRotation(uint8_t m)
 	rotation = m % 4; // can't be higher than 3
 	beginSPITransaction();
 	lcd_cmd(KEDEIRPI35_MADCTL);
+	lcd_data(MADCTLRotionValues[rotation]);
 	switch (rotation) {
 	case 0:
-		lcd_data(0xEA); 
+		//lcd_data(0xEA); 
 		_width  = KEDEIRPI35_TFTHEIGHT;
 		_height = KEDEIRPI35_TFTWIDTH;
 		break;
 	case 1:
-		lcd_data(0x4A);
+		//lcd_data(0x4A);
 		_width  = KEDEIRPI35_TFTWIDTH;
 		_height = KEDEIRPI35_TFTHEIGHT;
 		break;
 	case 2:
-		lcd_data(0x2A);
+		//lcd_data(0x2A);
 		_width  = KEDEIRPI35_TFTHEIGHT;
 		_height = KEDEIRPI35_TFTWIDTH;
 		break;
 	case 3:
-		lcd_data(0x8A);
+		//lcd_data(0x8A);
 		_width  = KEDEIRPI35_TFTWIDTH;
 		_height = KEDEIRPI35_TFTHEIGHT;
 		break;
@@ -2508,6 +2510,18 @@ void KEDEIRPI35_t3::sleep(bool enable) {
 	}
 #endif	
 }
+
+void KEDEIRPI35_t3::sendCommand(uint8_t commandByte, const uint8_t *dataBytes, uint8_t numDataBytes) {
+    beginSPITransaction();
+    lcd_cmd(commandByte); // Send the command byte
+  
+    for (uint8_t i=0; i<numDataBytes; i++) {
+	  lcd_data(*dataBytes++); // Send the data bytes
+    }
+  
+    endSPITransaction();
+}
+
 
 
 /***************************************************************************************

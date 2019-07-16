@@ -129,10 +129,8 @@
 #define BEGIN_PIXEL_DATA           0x2C
 #define BEGIN_READ_DATA            0x2E
 #define READ_MEMORY_CONTINUE       0x3E
-/*
-#define KEDEIRPI35_PWCTR6  0xFC
 
-*/
+// Define the MADCTL values for each rotation
 
 // Color definitions
 #ifdef RGB_COLORS
@@ -392,7 +390,12 @@ class KEDEIRPI35_t3 : public Print
 	int16_t strPixelLen(char * str);
 	void write16BitColor(uint16_t color, bool last_pixel=false);
 	void write16BitColor(uint16_t color, uint16_t count, bool last_pixel);
-	
+
+
+	void sendCommand(uint8_t commandByte, const uint8_t *dataBytes, uint8_t numDataBytes);
+
+    static const uint8_t MADCTLRotionValues[4]; 
+
 	// setOrigin sets an offset in display pixels where drawing to (0,0) will appear
 	// for example: setOrigin(10,10); drawPixel(5,5); will cause a pixel to be drawn at hardware pixel (15,15)
 	void setOrigin(int16_t x = 0, int16_t y = 0) { 

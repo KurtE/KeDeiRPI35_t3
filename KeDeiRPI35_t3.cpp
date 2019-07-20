@@ -75,7 +75,41 @@
 #else
 #endif	
 
+/* R1 = populated, R2 = unpopulated
 const uint8_t KEDEIRPI35_t3::MADCTLRotionValues[4] = {0xEA, 0x4A, 0x2A, 0x8A};
+ */
+/* R1 = unpopulated, r2 = populated
+const uint8_t KEDEIRPI35_t3::MADCTLRotionValues[4] = {
+	0xAA,	//   0 = 0xEA
+	0x0A,	//  90 = 0x4A
+	0x6A,	// 180 = 0x2A
+	0xCA	// 270 = 0x8A
+};
+*/
+
+//const uint8_t KEDEIRPI35_t3::MADCTLRotionValues[4];
+
+void KEDEIRPI35_t3::setMADCTLRotationValues() {
+  spi_port->beginTransaction(SPISettings(2000000, MSBFIRST, SPI_MODE0));
+  DIRECT_WRITE_LOW(_touchcsport, _touchcspinmask);  
+  spi_port->transfer(0xe7); // Start a conversion.
+  uint16_t value = spi_port->transfer(0) << 8;
+  DIRECT_WRITE_HIGH(_touchcsport, _touchcspinmask);
+  spi_port->endTransaction();
+  // Gave a little slop as it is an AtoD conversion on the other side...
+  if((value | spi_port->transfer(0)) < 10) {
+	  MADCTLRotionValues[0] = 0xEA;
+	  MADCTLRotionValues[1] = 0x4A;
+	  MADCTLRotionValues[2] = 0x2A;
+	  MADCTLRotionValues[3] = 0x8A;
+  } else {
+	  //MADCTLRotionValues[4] = {0xAA, 0x0A, 0x6A, 0xCA };
+	  MADCTLRotionValues[0] = 0xAA;
+	  MADCTLRotionValues[1] = 0x0A;
+	  MADCTLRotionValues[2] = 0x6A;
+	  MADCTLRotionValues[3] = 0xCA;
+	  }
+}
 
 // Constructor when using hardware SPI.  Faster, but must use SPI pins
 // specific to each board type (e.g. 11,13 for Uno, 51,52 for Mega, etc.)
@@ -1323,60 +1357,149 @@ void KEDEIRPI35_t3::begin(void)
 
 	spi_port->begin();
 #endif
+  // Add in stuff from Other SPI transfers at startup
+  //==============================================================
+#if 0
+  SPI.beginTransaction(SPISettings(30000000, MSBFIRST, SPI_MODE3));
+  // first 10 appear to change CS between each
+  for(uint8_t i= 0; i < 10; i++) {
+	DIRECT_WRITE_LOW(_touchcsport, _touchcspinmask);
+    spi_transmit32(0x00E70000);
+    DIRECT_WRITE_HIGH(_touchcsport, _touchcspinmask);
+    delayMicroseconds(1);
+  }
+  // Then maybe another 30 without changing CS:
+  DIRECT_WRITE_LOW(_touchcsport, _touchcspinmask);
+  for(uint8_t i= 0; i < 30; i++) {
+    spi_transmit32(0x00E70000);
+    delayMicroseconds(1);
+  }
+#endif
   // Do Reset stuff
-  beginSPITransaction();
+  SPI.beginTransaction(SPISettings(30000000, MSBFIRST, SPI_MODE0));
   spi_transmit32(0x00010000L);  //
   endSPITransaction();
   delay(50);
 
-  beginSPITransaction();
+  SPI.beginTransaction(SPISettings(30000000, MSBFIRST, SPI_MODE0));
   spi_transmit32(0x00000000L);
   endSPITransaction();
   delay(120);
-
-  beginSPITransaction();
-  spi_transmit32(0x00010000L);
+  SPI.beginTransaction(SPISettings(30000000, MSBFIRST, SPI_MODE0));
+  spi_transmit32(0x00010000);
+  delay(50); spi_transmit32(0x00000000);
+  delay(118); spi_transmit32(0x00010000);
+  delay(50); lcd_cmd(0x0000);
+  delay(10); lcd_cmd(0x00FF);
+  lcd_cmd(0x00FF);
+  delay(10); lcd_cmd(0x00FF);
+  //Serial.println("After a few SPI outputs");
+  lcd_cmd(0x00FF);
+  lcd_cmd(0x00FF);
+  lcd_cmd(0x00FF);
+  delay(15); lcd_cmd(0x0011);
+  delay(150); lcd_cmd(0x00B0);
+  lcd_data(0x0000);
+  lcd_cmd(0x00B3);
+  lcd_data(0x0002);
+  lcd_data(0x0000);
+  lcd_data(0x0000);
+  lcd_data(0x0000);
+  lcd_cmd(0x00B9);
+  lcd_data(0x0001);
+  lcd_data(0x0000);
+  lcd_data(0x000F);
+  lcd_data(0x000F);
+  lcd_cmd(0x00C0);
+  lcd_data(0x0013);
+  lcd_data(0x003B);
+  lcd_data(0x0000);
+  lcd_data(0x0002);
+  lcd_data(0x0000);
+  lcd_data(0x0001);
+  lcd_data(0x0000);
+  lcd_data(0x0043);
+  lcd_cmd(0x00C1);
+  lcd_data(0x0008);
+  lcd_data(0x000F);
+  lcd_data(0x0008);
+  lcd_data(0x0008);
+  lcd_cmd(0x00C4);
+  lcd_data(0x0011);
+  lcd_data(0x0007);
+  lcd_data(0x0003);
+  lcd_data(0x0004);
+  lcd_cmd(0x00C6);
+  lcd_data(0x0000);
+  lcd_cmd(0x00C8);
+  lcd_data(0x0003);
+  lcd_data(0x0003);
+  lcd_data(0x0013);
+  lcd_data(0x005C);
+  lcd_data(0x0003);
+  lcd_data(0x0007);
+  lcd_data(0x0014);
+  lcd_data(0x0008);
+  lcd_data(0x0000);
+  lcd_data(0x0021);
+  lcd_data(0x0008);
+  lcd_data(0x0014);
+  lcd_data(0x0007);
+  lcd_data(0x0053);
+  lcd_data(0x000C);
+  lcd_data(0x0013);
+  lcd_data(0x0003);
+  lcd_data(0x0003);
+  lcd_data(0x0021);
+  lcd_data(0x0000);
+  lcd_cmd(0x0035);
+  lcd_data(0x0000);
+  lcd_cmd(0x0036);  //Address mode
+  // 0x48 = 0b01001000
+  // 0 - top to bottom
+  // 1 - right to left
+  // 0 - normal mode of columns order
+  // 0 - refresh top to bottom
+  // 1 - RGB or BGR  (here BGR order)
+  // 0 - <skip>
+  // 0 - no hflip
+  // 0 - no flip
+  lcd_data(0x00AA);  //was 60
+  lcd_cmd(0x003A);
+  lcd_data(0x0055);
+  lcd_cmd(0x0044);
+  lcd_data(0x0000);
+  lcd_data(0x0001);
+  lcd_cmd(0x00D0);
+  lcd_data(0x0007);
+  lcd_data(0x0007);
+  lcd_data(0x001D);
+  lcd_data(0x0003);
+  lcd_cmd(0x00D1);
+  lcd_data(0x0003);
+  lcd_data(0x0030);
+  lcd_data(0x0010);
+  lcd_cmd(0x00D2);
+  lcd_data(0x0003);
+  lcd_data(0x0014);
+  lcd_data(0x0004);
+  lcd_cmd(0x0029);
+  delay(30); lcd_cmd(0x002A);
+  lcd_data(0x0000);
+  lcd_data(0x0000);
+  lcd_data(0x0001);
+  lcd_data(0x003F);
+  lcd_cmd(0x002B);
+  lcd_data(0x0000);
+  lcd_data(0x0000);
+  lcd_data(0x0001);
+  lcd_data(0x00E0);
+  lcd_cmd(0x00B4);
+  lcd_data(0x0000);
+  lcd_cmd(0x002C);
   endSPITransaction();
-  delay(50);
-  //kedei 6.3 init sequence
-  beginSPITransaction();
-  lcd_cmd(0x00);
-  delay(20);
-  lcd_cmd(0x11);
-  endSPITransaction();
-  delay(120);
-  beginSPITransaction();
-  lcd_cmd(0x13);
-  lcd_cmd(0xB4); lcd_data(0x00);
-  lcd_cmd(0xC0); lcd_data(0x10); lcd_data(0x3D); lcd_data(0x00); lcd_data(0x02); lcd_data(0x11);
-  lcd_cmd(0xC1); lcd_data(0x10);
-  lcd_cmd(0xC8); lcd_data(0x00); lcd_data(0x30); lcd_data(0x36); lcd_data(0x45);
-  lcd_data(0x04); lcd_data(0x16); lcd_data(0x37); lcd_data(0x75);
-  lcd_data(0x77); lcd_data(0x54); lcd_data(0x0F); lcd_data(0x00);
-  lcd_cmd(0xD0); lcd_data(0x07); lcd_data(0x40); lcd_data(0x1C);
-  lcd_cmd(0xD1); lcd_data(0x00); lcd_data(0x18); lcd_data(0x1D);
-  lcd_cmd(0xD2); lcd_data(0x01); lcd_data(0x11);
-  lcd_cmd(0xC5); lcd_data(0x08);
-  lcd_cmd(0x36); lcd_data(0x28);
-  lcd_cmd(0x3A); lcd_data(0x05);
-  lcd_cmd(0x2A); lcd_data(0x00); lcd_data(0x00); lcd_data(0x01); lcd_data(0x3F);
-  lcd_cmd(0x2B); lcd_data(0x00); lcd_data(0x00); lcd_data(0x01); lcd_data(0xE0);
-  endSPITransaction();
-  delay(120);
-  beginSPITransaction();
-  lcd_cmd(0x29);
+  setMADCTLRotationValues();
   delay(5);
-  lcd_cmd(0x36); lcd_data(0x28);
-  lcd_cmd(0x3A); lcd_data(0x55);
-  lcd_cmd(0x2A); lcd_data(0x00); lcd_data(0x00); lcd_data(0x01); lcd_data(0x3F);
-  lcd_cmd(0x2B); lcd_data(0x00); lcd_data(0x00); lcd_data(0x01); lcd_data(0xE0);
-  endSPITransaction();
-  delay(120);
-  beginSPITransaction();
-  lcd_cmd(0x21);
-  lcd_cmd(0x29);
-  delay(50);
-  endSPITransaction();
   setRotation(0);
 }
 

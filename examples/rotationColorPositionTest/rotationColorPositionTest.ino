@@ -36,9 +36,9 @@ void drawTestScreen() {
 void playWithMADCTL() {
   Serial.println("Try changing one bit of MADCTL to see if it fixes problem");
   Serial.printf("Current value for Rotation %d = %x\n", rotation,
-                KEDEIRPI35_t3::MADCTLRotionValues[rotation]);
+                tft.getMADCTLRotationValue(rotation));
   for (uint8_t mask = 0x01; mask != 0; mask <<= 1) {
-    uint8_t madctl_value = KEDEIRPI35_t3::MADCTLRotionValues[rotation] ^ mask;
+    uint8_t madctl_value = tft.getMADCTLRotationValue(rotation) ^ mask;
     Serial.printf("Try madctl: %x\n", madctl_value);
     tft.sendCommand(KEDEIRPI35_MADCTL, &madctl_value, 1);
     drawTestScreen();
@@ -54,7 +54,7 @@ void playWithMADCTL() {
 void loop() {
   tft.setRotation(rotation);
   Serial.printf("Set Rotation: %d (%x) width: %d height: %d\n",
-                rotation, KEDEIRPI35_t3::MADCTLRotionValues[rotation], tft.width(), tft.height());
+                rotation, tft.getMADCTLRotationValue(rotation), tft.width(), tft.height());
   elapsedMillis timer;
   drawTestScreen();
   // large block of text
